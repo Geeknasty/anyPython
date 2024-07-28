@@ -26,6 +26,7 @@ import traceback
 import os
 import pkgutil
 import importlib
+import hashlib
 
 import re
 
@@ -58,6 +59,52 @@ class anyPython:
         # Include the image in local_vars if it's provided
         if image is not None:
             local_vars["image"] = image
+
+        try:
+            # Execute the Python code safely within the local scope
+            exec(code, {}, local_vars)
+        except Exception as e:
+            # Return the error message and None for the image
+            return (str(e), None)
+        finally:
+            # Restore stdout
+            sys.stdout = old_stdout
+
+        # Get the output and return it along with the image as a tuple
+        output = redirected_output.getvalue()
+        return (output, image)
+
+class anyPythonAlwaysRun:     
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {       
+                    "code": ("STRING", {"multiline": True, "default": "print(variable)"}),                              
+                    },
+                "optional": {   
+                    "variable": ("STRING", {"multiline": True, "default": "5"}),
+                    "image": ("IMAGE",),            
+                    },
+                }
+
+    # Define the return type as a tuple with both STRING and IMAGE
+    RETURN_TYPES = ("STRING", "IMAGE")
+    FUNCTION = "execute_code"
+    CATEGORY = "🚀 Any Python"
+
+    @classmethod
+    def IS_CHANGED(s, image):
+            #always update
+            m = hashlib.sha256().update(str(time.time()).encode("utf-8"))
+            return m.digest().hex()
+
+    def execute_code(self, code, variable=None, image=None):
+        # Redirect stdout to capture print statements
+        old_stdout = sys.stdout
+        redirected_output = sys.stdout = StringIO()
+
+        # Create a local dictionary to hold the variables
+        local_vars = {"variable": variable}
 
         try:
             # Execute the Python code safely within the local scope
